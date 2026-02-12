@@ -44,7 +44,7 @@ public:
     // 20ms 간격으로 상태 업데이트 및 퍼블리시
     timer_ = this->create_wall_timer(20ms, std::bind(&FjtRealTimeMonitor::on_timer, this));
     
-    std::cout << "\033[1;32m[SYSTEM] MoveIt-Native PVAT Monitor (Degree) Ready.\033[0m" << std::endl;
+    std::cout << "\033[1;32m[시스템] MoveIt 실시간 PVAT 모니터 준비 완료.\033[0m" << std::endl;
   }
 
 private:
@@ -62,60 +62,56 @@ private:
 
   void handle_accepted(const std::shared_ptr<GoalHandle> goal_handle)
   {
-    std::thread([this, goal_handle]() {
+    // 입력을 기다리지 않고 즉시 별도 스레드에서 실행 시작
+    std::thread([this, goal_handle]() 
+    {
       auto goal = goal_handle->get_goal();
       
-      // 실행 전 궤적 정보 복사 (충돌 방지)
       {
         std::lock_guard<std::mutex> lk(mtx_);
         traj_ = goal->trajectory;
+        
+        // 궤적 시작 시간 설정
+        start_time_ = this->now(); 
+        
+        double dur = (double)traj_.points.back().time_from_start.sec + 
+                     (double)traj_.points.back().time_from_start.nanosec * 1e-9;
+        end_time_ = start_time_ + rclcpp::Duration::from_seconds(dur);
+        
+        executing_ = true;
+        first_print_ = true; 
       }
 
-      std::cout << "\n\033[1;33m[WAIT] Trajectory Ready. Execute? (y/n): \033[0m" << std::flush;
-      char input;
-      std::cin >> input;
+      std::cout << "\033[1;33m[알림] 궤적 수신: 즉시 실행을 시작합니다...\033[0m" << std::endl;
 
-      if (input == 'y' || input == 'Y') {
+      // 궤적 종료 시점까지 대기
+      while (rclcpp::ok()) 
+      {
         {
           std::lock_guard<std::mutex> lk(mtx_);
-          // 핵심: 사용자가 'y'를 입력한 시점을 T=0으로 설정하여 순간이동 방지
-          start_time_ = this->now(); 
-          
-          double dur = (double)traj_.points.back().time_from_start.sec + 
-                       (double)traj_.points.back().time_from_start.nanosec * 1e-9;
-          end_time_ = start_time_ + rclcpp::Duration::from_seconds(dur);
-          
-          executing_ = true;
-          first_print_ = true; 
+          if (!executing_ || this->now() >= end_time_) break;
         }
-        
-        // 궤적 종료 시점까지 대기
-        while (rclcpp::ok()) {
-          {
-            std::lock_guard<std::mutex> lk(mtx_);
-            if (!executing_ || this->now() >= end_time_) break;
-          }
-          std::this_thread::sleep_for(10ms);
-        }
+        std::this_thread::sleep_for(10ms);
+      }
 
+      {
         std::lock_guard<std::mutex> lk(mtx_);
         executing_ = false;
-        current_state_ = traj_.points.back(); // 종점 고정
-        
-        auto res = std::make_shared<FollowJT::Result>();
-        res->error_code = FollowJT::Result::SUCCESSFUL;
-        goal_handle->succeed(res);
-        std::cout << "\n\033[1;32m[DONE] Execution Finished Correctly.\033[0m" << std::endl;
-      } else {
-        goal_handle->canceled(std::make_shared<FollowJT::Result>());
+        current_state_ = traj_.points.back(); // 최종 위치 고정
       }
+      
+      auto res = std::make_shared<FollowJT::Result>();
+      res->error_code = FollowJT::Result::SUCCESSFUL;
+      goal_handle->succeed(res);
+      std::cout << "\n\033[1;32m[완료] 궤적 실행이 정상적으로 종료되었습니다.\033[0m" << std::endl;
     }).detach();
   }
 
   void on_timer()
   {
     std::lock_guard<std::mutex> lk(mtx_);
-    if (executing_) {
+    if (executing_) 
+    {
       double t = (this->now() - start_time_).seconds();
       current_state_ = sample_pvat(traj_, t);
       print_realtime_dashboard();
@@ -135,17 +131,19 @@ private:
     if (!first_print_) std::cout << "\033[4A"; 
     first_print_ = false;
 
-    std::cout << "\033[1;36m[LIVE MOVEIT PATH - DEGREE]\033[0m \033[K" << std::endl;
+    std::cout << "\033[1;36m[실시간 MoveIt 경로 모니터링 - 단위: 도(Deg)]\033[0m \033[K" << std::endl;
     std::cout << std::fixed << std::setprecision(2);
 
-    for (int row = 0; row < 3; ++row) {
-      for (int col = 0; col < 2; ++col) {
+    for (int row = 0; row < 3; ++row) 
+    {
+      for (int col = 0; col < 2; ++col) 
+      {
         int i = row * 2 + col;
         double p = current_state_.positions[i] * rad2deg;
         double v = current_state_.velocities[i] * rad2deg;
         double a = current_state_.accelerations[i] * rad2deg;
 
-        std::cout << "[" << i+1 << "] P:" << std::setw(7) << p 
+        std::cout << "[" << i+1 << "축] P:" << std::setw(7) << p 
                   << " V:" << std::setw(6) << v 
                   << " A:" << std::setw(6) << a;
         if (col == 0) std::cout << " | ";
@@ -165,9 +163,9 @@ private:
     if (t <= 0.0) return pts.front();
     if (t >= to_sec(pts.back().time_from_start)) return pts.back();
 
-    // 현재 시간이 속한 구간(segment) 찾기
     size_t i = 0;
-    for (; i < pts.size() - 1; ++i) {
+    for (; i < pts.size() - 1; ++i) 
+    {
         if (t <= to_sec(pts[i+1].time_from_start)) break;
     }
 
@@ -179,13 +177,14 @@ private:
     trajectory_msgs::msg::JointTrajectoryPoint p;
     p.positions.resize(6); p.velocities.resize(6); p.accelerations.resize(6);
 
-    for (int k = 0; k < 6; ++k) {
+    for (int k = 0; k < 6; ++k) 
+    {
       double p0 = pts[i].positions[k], p1 = pts[i+1].positions[k];
       double v0 = pts[i].velocities[k], v1 = pts[i+1].velocities[k];
       double a0 = pts[i].accelerations.empty() ? 0.0 : pts[i].accelerations[k];
       double a1 = pts[i+1].accelerations.empty() ? 0.0 : pts[i+1].accelerations[k];
 
-      // Quintic Spline (5차 다항식) 보간: 위치, 속도, 가속도 연속성 보장
+      // 5차 다항식(Quintic Spline) 보간
       double c0 = p0;
       double c1 = v0;
       double c2 = a0 * 0.5;
@@ -212,7 +211,8 @@ private:
   rclcpp::Time start_time_, end_time_;
 };
 
-int main(int argc, char ** argv) {
+int main(int argc, char ** argv) 
+{
   rclcpp::init(argc, argv);
   rclcpp::spin(std::make_shared<FjtRealTimeMonitor>());
   rclcpp::shutdown();
