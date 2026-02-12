@@ -1,0 +1,25 @@
+moveit_setup_assistant_config:
+  urdf:
+    package: snt_robot_description
+    relative_path: xacro/SNTRobot.urdf.xacro
+  srdf:
+    relative_path: config/SNTRobot.srdf
+  package_settings:
+    author_name: Lee Seung Chan
+    author_email: well_77@naver.com
+    generated_timestamp: 1770610633
+  control_xacro:
+    command:
+      - position
+    state:
+      - position
+      - velocity
+  modified_urdf:
+    xacros:
+      - control_xacro
+  control_xacro:
+    command:
+      - position
+    state:
+      - position
+      - velocity

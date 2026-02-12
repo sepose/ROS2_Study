@@ -1,0 +1,148 @@
+<?xml version="1.0"?>
+<robot name="SNTRobot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- ====== 몸통의 형태 정의 ====== --> 
+
+  <xacro:property name="box_x" value="0.06"/>
+  <xacro:property name="box_y" value="0.06"/>
+
+  <!-- 링크 길이들 -->
+
+  <xacro:property name="L1" value="0.25"/>
+  <xacro:property name="L2" value="0.10"/>
+  <xacro:property name="L3" value="0.25"/>
+  <xacro:property name="L4" value="0.10"/>
+  <xacro:property name="L5" value="0.25"/>
+  <xacro:property name="L6" value="0.10"/>
+  <xacro:property name="L7" value="0.10"/>
+
+  <!-- ====== 재질(색) 정의 ====== -->
+
+  <material name="mat_black">
+    <color rgba="0.05 0.05 0.05 1.0"/>
+  </material>
+
+  <material name="mat_orange">robot
+    <color rgba="1.0 0.45 0.0 1.0"/>
+  </material>
+
+  <!-- ====== 간단 관성(임시) ====== -->
+  <xacro:macro name="simple_inertial" params="mass ix iy iz">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="${mass}"/>
+      <inertia ixx="${ix}" ixy="0" ixz="0" iyy="${iy}" iyz="0" izz="${iz}"/>
+    </inertial>
+  </xacro:macro>
+
+  <!-- ====== 박스 링크 생성
+       링크 프레임 원점은 joint 위치(링크 시작점)에 둠
+       박스는 +Z로 뻗도록 z=length/2로 올림
+  ====== -->
+
+  <xacro:macro name="link_box" params="name length material_name">
+    <link name="${name}">
+      <xacro:simple_inertial mass="1.0" ix="0.01" iy="0.01" iz="0.01"/>
+
+      <visual>
+        <origin xyz="0 0 ${length/2}" rpy="0 0 0"/>
+        <geometry>
+          <box size="${box_x} ${box_y} ${length}"/>
+        </geometry>
+        <material name="${material_name}"/>
+      </visual>
+
+      <collision>
+        <origin xyz="0 0 ${length/2}" rpy="0 0 0"/>
+        <geometry>
+          <box size="${box_x} ${box_y} ${length}"/>
+        </geometry>
+      </collision>
+    </link>
+  </xacro:macro>
+
+  <!-- ====== 조인트 매크로(핵심: rpy를 인자로 받는다) ====== -->
+
+  <xacro:macro name="rev_joint" params="name parent child xyz rpy axis">
+    <joint name="${name}" type="revolute">
+      <parent link="${parent}"/>
+      <child link="${child}"/>
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+      <axis xyz="${axis}"/>
+      <limit lower="-3.1416" upper="3.1416" effort="50" velocity="2.0"/>
+      <dynamics damping="0.1" friction="0.0"/>
+    </joint>
+  </xacro:macro>
+
+  <xacro:macro name="fix_joint" params="name parent child xyz rpy">
+    <joint name="${name}" type="fixed">
+      <parent link="${parent}"/>
+      <child link="${child}"/>
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+    </joint>
+  </xacro:macro>
+
+  <!-- ====== base ====== -->
+
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 0.05" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.20 0.20 0.10"/>
+      </geometry>
+      <material name="mat_black"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.05" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.20 0.20 0.10"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- ====== links (검/주 반복) ====== -->
+
+  <xacro:link_box name="link1" length="${L1}" material_name="mat_black"/>
+  <xacro:link_box name="link2" length="${L2}" material_name="mat_orange"/>
+  <xacro:link_box name="link3" length="${L3}" material_name="mat_black"/>
+  <xacro:link_box name="link4" length="${L4}" material_name="mat_orange"/>
+  <xacro:link_box name="link5" length="${L5}" material_name="mat_black"/>
+  <xacro:link_box name="link6" length="${L6}" material_name="mat_orange"/>
+  <xacro:link_box name="link7" length="${L7}" material_name="mat_black"/>
+
+
+  <xacro:rev_joint name="joint1"
+                   parent="base_link" child="link1"
+                   xyz="0 0 0.10" rpy="0 0 0"
+                   axis="0 0 1"/>
+
+  <xacro:rev_joint name="joint2"
+                   parent="link1" child="link2"
+                   xyz="0 0 ${L1}" rpy="1.5708 0 0"
+                   axis="0 0 -1"/>
+
+  <xacro:fix_joint name="fix_joint"
+                   parent="link2" child="link3"
+                   xyz="0 0 ${L2}" rpy="-1.5708 0 0"/>
+
+  <xacro:rev_joint name="joint3"
+                  parent="link3" child="link4"
+                  xyz="0 0 ${L3}" rpy="-1.5708 0 0"
+                  axis="0 0 1"/>
+
+  <xacro:rev_joint name="joint4"
+                  parent="link4" child="link5"
+                  xyz="0 0 ${L4}" rpy="1.5708 0 0"
+                  axis="0 0 1"/>
+
+  <xacro:rev_joint name="joint5"
+                   parent="link5" child="link6"
+                   xyz="0 0 ${L5}" rpy="1.5708 0 0"
+                   axis="0 0 -1"/>
+
+  <xacro:rev_joint name="joint6"
+                   parent="link6" child="link7"
+                   xyz="0 0 ${L6}" rpy="-1.5708 0 0"
+                   axis="0 0 1"/>
+
+</robot>
