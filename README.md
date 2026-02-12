@@ -1,4 +1,7 @@
-##   다관절 로봇 팔을 제어하기 위한 ROS2 스터디     
+## ROS2_Study
+
+
+- 다관절 로봇팔 제어용 스터디
 
 1. description : 로봇의 형태 파일.
 2. control : 로봇의 FollowJointTrajectory Action 서버.
