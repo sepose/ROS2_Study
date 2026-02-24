@@ -7,7 +7,7 @@ moveit_setup_assistant_config:
   package_settings:
     author_name: Lee Seung Chan
     author_email: well_77@naver.com
-    generated_timestamp: 1770610633
+    generated_timestamp: 1770940194
   control_xacro:
     command:
       - position
