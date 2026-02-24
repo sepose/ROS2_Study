@@ -15,9 +15,21 @@ find_package(sensor_msgs REQUIRED)
 
 
 add_executable(snt_fjt_server src/snt_fjt_server.cpp)
+add_executable(snt_traj_check src/snt_traj_check.cpp)
+
+# snt_fjt_server가 의존하는 항목 
+
 ament_target_dependencies(snt_fjt_server rclcpp rclcpp_action control_msgs trajectory_msgs sensor_msgs)
 
 install(TARGETS snt_fjt_server
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# snt_traj_check가 의존하는 항목 
+
+ament_target_dependencies(snt_traj_check rclcpp rclcpp_action control_msgs trajectory_msgs sensor_msgs)
+
+install(TARGETS snt_traj_check
   DESTINATION lib/${PROJECT_NAME}
 )
 
