@@ -1,4 +1,4 @@
-## ROS2_Study <img width="19" height="19" alt="image" src="https://github.com/user-attachments/assets/a26d384d-9a45-4c9d-a577-b3ddc6de005b" />
+## ROS2_Study <img width="38" height="38" alt="image" src="https://github.com/user-attachments/assets/a26d384d-9a45-4c9d-a577-b3ddc6de005b" />
 
 - 다관절 로봇팔 제어용 스터디
 
