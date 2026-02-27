@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<library path="lib/libsnt_hw.so">
+  <class name="snt_robot_driver/SNTRobotHW"
+         type="SNTRobotHW"
+         base_class_type="hardware_interface::SystemInterface">
+    <description>SNT 로봇 하드웨어 인터페이스 플러그인</description>
+  </class>
+</library>

@@ -9,6 +9,6 @@
     <xacro:include filename="SNTRobot.ros2_control.xacro" />
 
 
-    <xacro:SNTRobot_ros2_control name="FakeSystem" initial_positions_file="$(arg initial_positions_file)"/>
+    <xacro:SNTRobot_ros2_control name="snt_robot_driver/SNTRobotHW" initial_positions_file="$(arg initial_positions_file)"/>
 
 </robot>

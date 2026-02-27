@@ -7,11 +7,10 @@ moveit_setup_assistant_config:
   package_settings:
     author_name: Lee Seung Chan
     author_email: well_77@naver.com
-    generated_timestamp: 1771995366
+    generated_timestamp: 1772081434
   control_xacro:
     command:
       - position
-      - velocity
     state:
       - position
       - velocity
@@ -21,7 +20,6 @@ moveit_setup_assistant_config:
   control_xacro:
     command:
       - position
-      - velocity
     state:
       - position
       - velocity

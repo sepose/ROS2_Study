@@ -25,6 +25,10 @@ public:
   // ---------------- on_init ----------------
   CallbackReturn on_init(const hardware_interface::HardwareInfo & info) override
   {
+    std::cout << "=========================================" << std::endl;
+    std::cout << "INIT_INIT_INIT_INIT_INIT_INIT_INIT_INIT_"<< std::endl;
+    std::cout << "=========================================" << std::endl;
+    RCLCPP_ERROR(rclcpp::get_logger("SNT_HW"), "SNT로봇: write() 테스트 에러 로그입니다");
     RCLCPP_INFO(rclcpp::get_logger("SNT_HW"), "SNT로봇 on_init 작동 - 초기화 시작.");
     if (hardware_interface::SystemInterface::on_init(info) != CallbackReturn::SUCCESS)
     {
