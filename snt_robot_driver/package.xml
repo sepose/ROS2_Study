@@ -16,5 +16,6 @@
 
   <export>
     <build_type>ament_cmake</build_type>
+    <hardware_interface plugin="snt_robot_driver.xml" /> #snt_robot_plugin으로 맞춰주기 
   </export>
 </package>

@@ -3,12 +3,13 @@
     <xacro:arg name="initial_positions_file" default="initial_positions.yaml" />
 
     <!-- Import SNTRobot urdf file -->
-    <xacro:include filename="$(find snt_robot_description)/xacro/SNTRobot.urdf.xacro" />
+    <xacro:include filename="$(find snt_robot_description)/urdf/SNTRobot.urdf" />
 
     <!-- Import control_xacro -->
     <xacro:include filename="SNTRobot.ros2_control.xacro" />
 
 
-    <xacro:SNTRobot_ros2_control name="snt_robot_driver/SNTRobotHW" initial_positions_file="$(arg initial_positions_file)"/>
+    <xacro:SNTRobot_ros2_control name="SNTRobotHW" 
+        initial_positions_file="$(arg initial_positions_file)"/>
 
 </robot>

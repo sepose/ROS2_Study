@@ -1,13 +1,13 @@
 moveit_setup_assistant_config:
   urdf:
     package: snt_robot_description
-    relative_path: xacro/SNTRobot.urdf.xacro
+    relative_path: urdf/SNTRobot.urdf
   srdf:
     relative_path: config/SNTRobot.srdf
   package_settings:
-    author_name: Lee Seung Chan
-    author_email: well_77@naver.com
-    generated_timestamp: 1772081434
+    author_name: lee
+    author_email: gg@gmail.com
+    generated_timestamp: 1772506023
   control_xacro:
     command:
       - position

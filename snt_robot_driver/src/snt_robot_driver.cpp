@@ -16,6 +16,9 @@
 
 using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
 
+namespace snt_robot_driver
+{
+
 class SNTRobotHW : public hardware_interface::SystemInterface
 {
 public:
@@ -139,4 +142,10 @@ private:
   std::vector<double> command_position_, command_velocity_, command_effort_;
 };
 
-PLUGINLIB_EXPORT_CLASS(SNTRobotHW, hardware_interface::SystemInterface)
+}
+
+PLUGINLIB_EXPORT_CLASS
+(
+  snt_robot_driver::SNTRobotHW, 
+  hardware_interface::SystemInterface
+)

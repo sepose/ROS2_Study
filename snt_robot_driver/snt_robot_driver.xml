@@ -1,0 +1,9 @@
+<library path="snt_hw">
+  <class name="snt_robot_driver/SNTRobotHW"
+         type="snt_robot_driver::SNTRobotHW"
+         base_class_type="hardware_interface::SystemInterface">
+    <description>
+      Snt Robot Hardware Interface
+    </description>
+  </class>
+</library>

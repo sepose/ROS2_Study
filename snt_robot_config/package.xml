@@ -6,7 +6,7 @@
   <description>
      An automatically generated package with all the configuration and launch files for using the SNTRobot with the MoveIt Motion Planning Framework
   </description>
-  <maintainer email="well_77@naver.com">Lee Seung Chan</maintainer>
+  <maintainer email="gg@gmail.com">lee</maintainer>
 
   <license>BSD</license>
 
@@ -14,7 +14,7 @@
   <url type="bugtracker">https://github.com/ros-planning/moveit2/issues</url>
   <url type="repository">https://github.com/ros-planning/moveit2</url>
 
-  <author email="well_77@naver.com">Lee Seung Chan</author>
+  <author email="gg@gmail.com">lee</author>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 

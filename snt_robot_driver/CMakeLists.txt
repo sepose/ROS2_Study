@@ -12,6 +12,9 @@ find_package(hardware_interface REQUIRED)
 find_package(controller_manager REQUIRED)
 find_package(pluginlib REQUIRED)
 
+# src/snt_robot_driver.cpp 코드 라이브러리를 snt_hw 이름으로 생성
+# snt_robot_driver.xml을 package root에  만들때 경로를 snt_hw로 입력해주어야  함! 
+
 add_library(snt_hw SHARED src/snt_robot_driver.cpp)
 
 ament_target_dependencies(snt_hw
@@ -23,12 +26,16 @@ ament_target_dependencies(snt_hw
 )
 
 # export library for pluginlib
+
 install(TARGETS snt_hw
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
 )
 
-install(FILES plugin.xml DESTINATION share/${PROJECT_NAME})
+# CMakeLists.txt에서 Export 하는 과정 누락
+
+pluginlib_export_plugin_description_file(hardware_interface snt_robot_driver.xml)
+install(FILES snt_robot_driver.xml DESTINATION share/${PROJECT_NAME})
 
 ament_package()
