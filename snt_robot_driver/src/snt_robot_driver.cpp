@@ -127,7 +127,7 @@ public:
     ss << "Joint Degrees: ";
     for (size_t i = 0; i < num_joints_; ++i)
     {
-      double pos_deg = position_[i] * RAD_TO_DEG;
+      double pos_deg = command_position_[i] * RAD_TO_DEG;
       
       // 조인트 이름과 도(°) 값만 딱 나오게 설정
       ss << "[" << info_.joints[i].name << "]: " 
@@ -140,6 +140,7 @@ public:
   }
 
 private:
+
   size_t num_joints_{0};
   bool active_{false};
   std::vector<double> position_, velocity_, effort_;
