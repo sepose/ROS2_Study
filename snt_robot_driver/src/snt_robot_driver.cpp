@@ -118,8 +118,6 @@ public:
     for (size_t i = 0; i < num_joints_; ++i)
     {
       position_[i] = command_position_[i];
-      velocity_[i] = command_velocity_[i];
-      effort_[i] = 0.0;
     }
     return hardware_interface::return_type::OK;
   }
