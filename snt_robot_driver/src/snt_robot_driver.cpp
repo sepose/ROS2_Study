@@ -116,19 +116,26 @@ public:
     return hardware_interface::return_type::OK;
   }
 
-  // ---------------- write ----------------
-  hardware_interface::return_type write(const rclcpp::Time &, const rclcpp::Duration &) override
+// ---------------- write ----------------
+  hardware_interface::return_type write(const rclcpp::Time & /*time*/, const rclcpp::Duration & /*period*/) override
   {
     if (!active_) return hardware_interface::return_type::OK;
 
+    const double RAD_TO_DEG = 180.0 / 3.14159265358979323846;
     std::ostringstream ss;
-    ss << "SNT로봇 write 작동 - 명령 출력: ";
+
+    ss << "Joint Degrees: ";
     for (size_t i = 0; i < num_joints_; ++i)
     {
-      ss << "[" << info_.joints[i].name << "] pos=" << command_position_[i]
-         << " vel=" << command_velocity_[i] << " ";
+      double pos_deg = position_[i] * RAD_TO_DEG;
+      
+      // 조인트 이름과 도(°) 값만 딱 나오게 설정
+      ss << "[" << info_.joints[i].name << "]: " 
+         << std::fixed << std::setprecision(2) << pos_deg << "°  ";
     }
+
     RCLCPP_INFO(rclcpp::get_logger("SNT_HW"), "%s", ss.str().c_str());
+
     return hardware_interface::return_type::OK;
   }
 
