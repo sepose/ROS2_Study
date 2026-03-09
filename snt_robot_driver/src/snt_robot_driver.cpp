@@ -69,8 +69,11 @@ public:
   // ---------------- on_deactivate ----------------
   CallbackReturn on_deactivate(const rclcpp_lifecycle::State & /*previous_state*/) override
   {
-    RCLCPP_INFO(rclcpp::get_logger("SNT_HW"), "SNT로봇 on_deactivate 작동 - 제어가 중지되었습니다.");
+    
     active_ = false;
+
+    RCLCPP_INFO(rclcpp::get_logger("SNT_HW"), "SNT로봇 on_deactivate 작동 - 제어가 중지되었습니다.");
+
     return CallbackReturn::SUCCESS;
   }
 
@@ -133,14 +136,14 @@ public:
     // 어딘가에  쓴다고  가정하고 그냥  값 print
     // rclcpp::get_logger 가  print역할을  하는 놈이다
 
-    ss << "Joint Degrees: ";
+    ss << "조인트: ";
     for (size_t i = 0; i < num_joints_; ++i)
     {
       double pos_deg = command_position_[i] * RAD_TO_DEG;
       
       // 조인트 이름과 도(°) 값만 딱 나오게 설정
-      ss << "[" << info_.joints[i].name << "]: " 
-         << std::fixed << std::setprecision(2) << pos_deg << "°  ";
+      ss << "[" << info_.joints[i].name << "]:" 
+         << std::fixed << std::setprecision(2) << pos_deg << "° ";
     }
 
     RCLCPP_INFO(rclcpp::get_logger("SNT_HW"), "%s", ss.str().c_str());
