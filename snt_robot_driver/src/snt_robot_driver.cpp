@@ -55,6 +55,7 @@ public:
   CallbackReturn on_configure(const rclcpp_lifecycle::State & /*previous_state*/) override
   {
     RCLCPP_INFO(rclcpp::get_logger("SNT_HW"), "SNT로봇 on_configure 작동 - 하드웨어가 설정되었습니다.");
+    
     return CallbackReturn::SUCCESS;
   }
 
@@ -146,7 +147,7 @@ public:
          << std::fixed << std::setprecision(2) << pos_deg << "° ";
     }
 
-    RCLCPP_INFO(rclcpp::get_logger("SNT_HW"), "%s", ss.str().c_str());
+    //RCLCPP_INFO(rclcpp::get_logger("SNT_HW"), "%s", ss.str().c_str());
 
     return hardware_interface::return_type::OK;
   }
