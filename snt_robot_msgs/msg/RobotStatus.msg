@@ -1,0 +1,3 @@
+# RobotStatus.msg
+
+bool temp

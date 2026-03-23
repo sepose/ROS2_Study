@@ -11,6 +11,7 @@ find_package(rclcpp_lifecycle REQUIRED)
 find_package(hardware_interface REQUIRED)
 find_package(controller_manager REQUIRED)
 find_package(pluginlib REQUIRED)
+find_package(realtime_tools REQUIRED)
 
 # src/snt_robot_driver.cpp 코드 라이브러리를 snt_hw 이름으로 생성
 # snt_robot_driver.xml을 package root에  만들때 경로를 snt_hw로 입력해주어야  함! 
@@ -23,6 +24,7 @@ ament_target_dependencies(snt_hw
   hardware_interface
   controller_manager
   pluginlib
+  realtime_tools
 )
 
 # export library for pluginlib

@@ -3,15 +3,17 @@
 #include <memory>
 #include <iostream>
 #include <sstream>
+#include <iomanip>
+#include <array>
+#include <fstream>
+#include <pthread.h>
 
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_lifecycle/state.hpp"
-
+#include "std_msgs/msg/string.hpp" 
+#include "realtime_tools/realtime_publisher.hpp"
 #include "hardware_interface/system_interface.hpp"
 #include "hardware_interface/types/hardware_interface_type_values.hpp"
-#include "hardware_interface/hardware_info.hpp"
-#include "hardware_interface/handle.hpp"
-
 #include "pluginlib/class_list_macros.hpp"
 
 using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
@@ -19,151 +21,163 @@ using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface
 namespace snt_robot_driver
 {
 
-class SNTRobotHW : public hardware_interface::SystemInterface
-{
-public:
-  SNTRobotHW() = default;
-  ~SNTRobotHW() override = default;
+    static constexpr int MAX_SAMPLES = 1000;
 
-  // ---------------- on_init ----------------
-  CallbackReturn on_init(const hardware_interface::HardwareInfo & info) override
-  {
-    RCLCPP_INFO(rclcpp::get_logger("SNT_HW"), "SNT로봇 on_init 작동 - 초기화 시작.");
-
-    if (hardware_interface::SystemInterface::on_init(info) != CallbackReturn::SUCCESS)
+    class SNTRobotHW : public hardware_interface::SystemInterface
     {
-      RCLCPP_ERROR(rclcpp::get_logger("SNT_HW"), "SNT로봇 on_init 실패 - HardwareInfo 로드 실패.");
-      return CallbackReturn::ERROR;
+    public:
+
+        SNTRobotHW() = default;
+        ~SNTRobotHW() override = default;
+
+    CallbackReturn on_init(const hardware_interface::HardwareInfo & info) override
+    {
+        if (hardware_interface::SystemInterface::on_init(info) != CallbackReturn::SUCCESS)
+        {
+            return CallbackReturn::ERROR;
+        }
+
+        node_ = std::make_shared<rclcpp::Node>("snt_talker_node");
+        publisher_ = node_->create_publisher<std_msgs::msg::String>("chatter", 10);
+        rt_publisher_ = std::make_shared<realtime_tools::RealtimePublisher<std_msgs::msg::String>>(publisher_); 
+
+        num_joints_ = info_.joints.size();
+
+        position_.assign(num_joints_, 0.0);
+        velocity_.assign(num_joints_, 0.0);
+        command_position_.assign(num_joints_, 0.0);
+
+        RCLCPP_INFO(rclcpp::get_logger("SNT_HW"), "On Init 완료.");
+        return CallbackReturn::SUCCESS;
     }
 
-    num_joints_ = info_.joints.size();
+    std::vector<hardware_interface::StateInterface> export_state_interfaces() override
+    {
+        std::vector<hardware_interface::StateInterface> state_interfaces;
+        for (size_t i = 0; i < num_joints_; ++i)
+        {
+            state_interfaces.emplace_back(info_.joints[i].name, hardware_interface::HW_IF_POSITION, &position_[i]);
+            state_interfaces.emplace_back(info_.joints[i].name, hardware_interface::HW_IF_VELOCITY, &velocity_[i]);
+        }
+        return state_interfaces;
+    }
 
-    //
-    position_.assign(num_joints_, 0.0);
-    velocity_.assign(num_joints_, 0.0);
-    effort_.assign(num_joints_, 0.0);
-    command_position_.assign(num_joints_, 0.0);
-    command_velocity_.assign(num_joints_, 0.0);
-    command_effort_.assign(num_joints_, 0.0);
+    std::vector<hardware_interface::CommandInterface> export_command_interfaces() override
+    {
+        std::vector<hardware_interface::CommandInterface> command_interfaces;
+        for (size_t i = 0; i < num_joints_; ++i)
+        {
+            command_interfaces.emplace_back(info_.joints[i].name, hardware_interface::HW_IF_POSITION, &command_position_[i]);
+        }
+        return command_interfaces;
+    }
 
-    RCLCPP_INFO(rclcpp::get_logger("SNT_HW"), 
-                "SNT로봇 on_init 작동 - 총 %zu개의 조인트가 초기화되었습니다.", num_joints_);
-    return CallbackReturn::SUCCESS;
-  }
+    hardware_interface::return_type write(const rclcpp::Time & /*time*/, const rclcpp::Duration & /*period*/) override
+    {
+        if (!active_)
+        {
+            return hardware_interface::return_type::OK;
+        }
 
-  // ---------------- on_configure ----------------
-  CallbackReturn on_configure(const rclcpp_lifecycle::State & /*previous_state*/) override
-  {
-    RCLCPP_INFO(rclcpp::get_logger("SNT_HW"), "SNT로봇 on_configure 작동 - 하드웨어가 설정되었습니다.");
+        if (!is_full) 
+        {
+            struct timespec curr_time;
+            clock_gettime(CLOCK_MONOTONIC, &curr_time);
+            
+            // 초 단위를 고려한 정밀한 나노초 차이 계산 (지터 측정의 핵심)
+            long diff_nsec = (curr_time.tv_sec - last_time.tv_sec) * 1000000000L + 
+                             (curr_time.tv_nsec - last_time.tv_nsec);
+            
+            jitter_samples[sample_idx] = static_cast<double>(diff_nsec);
+            sample_idx++;
+
+            if (sample_idx >= MAX_SAMPLES) {
+                is_full = true;
+            }
+            last_time = curr_time;
+        }
+
+        return hardware_interface::return_type::OK;
+    }
+
+    hardware_interface::return_type read(const rclcpp::Time &, const rclcpp::Duration &) override
+    {
+       
+        for (size_t i = 0; i < num_joints_; ++i)
+        {
+            position_[i] = command_position_[i];
+        }
+        
+        return hardware_interface::return_type::OK;
+    }
+
+    CallbackReturn on_configure(const rclcpp_lifecycle::State & /*previous_state*/) override
+    {
+        RCLCPP_INFO(rclcpp::get_logger("SNT_HW"), "SNT로봇 on_configure 작동.");
+
+        struct sched_param param;
+        param.sched_priority = 90;
+        RCLCPP_INFO(rclcpp::get_logger("SNT_HW"), "Priority 90으로 상승");
+        pthread_setschedparam(pthread_self(),SCHED_FIFO,&param);
+        
+        return CallbackReturn::SUCCESS;
+    }
+
+    CallbackReturn on_activate(const rclcpp_lifecycle::State & /*previous_state*/) override
+    {
+        RCLCPP_INFO(rclcpp::get_logger("SNT_HW"), "SNT로봇 on_activate 작동.");
+        
+        clock_gettime(CLOCK_MONOTONIC, &last_time);
+        sample_idx = 0;
+        is_full = false;
+        
+        active_ = true;
+        return CallbackReturn::SUCCESS;
+    }
+
+    CallbackReturn on_deactivate(const rclcpp_lifecycle::State & /*previous_state*/) override
+    {
+        active_ = false;
+        if (is_full) 
+        {
+            std::string filepath = "/tmp/snt_jitter_log.csv";
+            std::ofstream file(filepath);
+
+            if (file.is_open()) 
+            {
+                file << "sample_index,jitter_ns\n";
+                double sum = 0;
+                for (int i = 0; i < MAX_SAMPLES; ++i) 
+                {
+                    file << i << "," << std::fixed << std::setprecision(0) << jitter_samples[i] << "\n";
+                    sum += jitter_samples[i];
+                }
+                file.close();
+                RCLCPP_INFO(rclcpp::get_logger("SNT_HW"), "지터 리포트 저장 완료: %s", filepath.c_str());
+                RCLCPP_INFO(rclcpp::get_logger("SNT_HW"), "평균 주기: %.2f ns", sum / MAX_SAMPLES);
+                }
+            }
+            RCLCPP_INFO(rclcpp::get_logger("SNT_HW"), "SNT로봇 on_deactivate 작동.");
+            return CallbackReturn::SUCCESS;
+    }
+
+    private:
+
+        double jitter_samples[MAX_SAMPLES]; 
+        int sample_idx = 0;
+        bool is_full = false;
+        struct timespec last_time;
+
+        size_t num_joints_{0};
+        bool active_{false};
+        std::vector<double> position_, velocity_, effort_;
+        std::vector<double> command_position_;
     
-    return CallbackReturn::SUCCESS;
-  }
+        std::shared_ptr<realtime_tools::RealtimePublisher<std_msgs::msg::String>> rt_publisher_;
+        std::shared_ptr<rclcpp::Node> node_;
+        rclcpp::Publisher<std_msgs::msg::String>::SharedPtr publisher_;
+    };
 
-  // ---------------- on_activate ----------------
-  CallbackReturn on_activate(const rclcpp_lifecycle::State & /*previous_state*/) override
-  {
-    RCLCPP_INFO(rclcpp::get_logger("SNT_HW"), "SNT로봇 on_activate 작동 - 제어가 시작됩니다.");
-    active_ = true;
-    return CallbackReturn::SUCCESS;
-  }
+} // namespace snt_robot_driver
 
-  // ---------------- on_deactivate ----------------
-  CallbackReturn on_deactivate(const rclcpp_lifecycle::State & /*previous_state*/) override
-  {
-    
-    active_ = false;
-
-    RCLCPP_INFO(rclcpp::get_logger("SNT_HW"), "SNT로봇 on_deactivate 작동 - 제어가 중지되었습니다.");
-
-    return CallbackReturn::SUCCESS;
-  }
-
-  // ---------------- export_state_interfaces ----------------
-  std::vector<hardware_interface::StateInterface> export_state_interfaces() override
-  {
-    RCLCPP_INFO(rclcpp::get_logger("SNT_HW"), "SNT로봇 export_state_interfaces 작동 - 상태 인터페이스를 등록합니다.");
-
-    // 즉, JSB가  어떤  값을  읽어가면  될지  정의해준다. 
-
-    std::vector<hardware_interface::StateInterface> state_interfaces;
-    for (size_t i = 0; i < info_.joints.size(); ++i)
-    {
-      state_interfaces.emplace_back(info_.joints[i].name, hardware_interface::HW_IF_POSITION, &position_[i]);
-      state_interfaces.emplace_back(info_.joints[i].name, hardware_interface::HW_IF_VELOCITY, &velocity_[i]);
-      RCLCPP_INFO(rclcpp::get_logger("SNT_HW"),
-                  "  → 조인트[%zu] %s: position, velocity 상태 인터페이스 등록 완료.",
-                  i + 1, info_.joints[i].name.c_str());
-    }
-    return state_interfaces;
-  }
-
-  // ---------------- export_command_interfaces ----------------
-  std::vector<hardware_interface::CommandInterface> export_command_interfaces() override
-  {
-    RCLCPP_INFO(rclcpp::get_logger("SNT_HW"), "SNT로봇 export_command_interfaces 작동 - 명령 인터페이스를 등록합니다.");
-
-    // 즉, JTC가 어디다가  명령 값을  쓰면  되는지  정의해준다.
-
-    std::vector<hardware_interface::CommandInterface> command_interfaces;
-    for (size_t i = 0; i < info_.joints.size(); ++i)
-    {
-      command_interfaces.emplace_back(info_.joints[i].name, hardware_interface::HW_IF_POSITION, &command_position_[i]);
-      RCLCPP_INFO(rclcpp::get_logger("SNT_HW"),
-                  "  → 조인트[%zu] %s: position 명령 인터페이스 등록 완료.",
-                  i + 1, info_.joints[i].name.c_str());
-    }
-    return command_interfaces;
-  }
-
-  // ---------------- read ----------------
-  hardware_interface::return_type read(const rclcpp::Time &, const rclcpp::Duration &) override
-  {
-    if (!active_) return hardware_interface::return_type::OK;
-    for (size_t i = 0; i < num_joints_; ++i)
-    {
-      position_[i] = command_position_[i];
-    }
-    return hardware_interface::return_type::OK;
-  }
-
-// ---------------- write ----------------
-  hardware_interface::return_type write(const rclcpp::Time & /*time*/, const rclcpp::Duration & /*period*/) override
-  {
-    if (!active_) return hardware_interface::return_type::OK;
-
-    const double RAD_TO_DEG = 180.0 / 3.14159265358979323846;
-    std::ostringstream ss;
-
-    // 어딘가에  쓴다고  가정하고 그냥  값 print
-    // rclcpp::get_logger 가  print역할을  하는 놈이다
-
-    ss << "조인트: ";
-    for (size_t i = 0; i < num_joints_; ++i)
-    {
-      double pos_deg = command_position_[i] * RAD_TO_DEG;
-      
-      // 조인트 이름과 도(°) 값만 딱 나오게 설정
-      ss << "[" << info_.joints[i].name << "]:" 
-         << std::fixed << std::setprecision(2) << pos_deg << "° ";
-    }
-
-    //RCLCPP_INFO(rclcpp::get_logger("SNT_HW"), "%s", ss.str().c_str());
-
-    return hardware_interface::return_type::OK;
-  }
-
-private:
-
-  size_t num_joints_{0};
-  bool active_{false};
-  std::vector<double> position_, velocity_, effort_;
-  std::vector<double> command_position_, command_velocity_, command_effort_;
-};
-
-}
-
-PLUGINLIB_EXPORT_CLASS
-(
-  snt_robot_driver::SNTRobotHW, 
-  hardware_interface::SystemInterface
-)
+PLUGINLIB_EXPORT_CLASS(snt_robot_driver::SNTRobotHW, hardware_interface::SystemInterface)
