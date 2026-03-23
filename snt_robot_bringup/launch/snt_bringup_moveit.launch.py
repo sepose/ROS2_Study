@@ -8,7 +8,7 @@ from ament_index_python.packages import get_package_share_directory
 def generate_launch_description():
     config_pkg = get_package_share_directory("snt_robot_config")
 
-    # 1️⃣ HW 인터페이스 런치
+    # HW 인터페이스 런치
     hw_launch_file = os.path.join(config_pkg, "launch", "snt_ros2_control.launch.py")
 
     # HW 런치 먼저 실행
@@ -24,7 +24,7 @@ def generate_launch_description():
         print(f"[ERROR] Failed to include HW launch: {e}")
         sys.exit(1)
 
-    # 2️⃣ 후속 런치들 (HW 초기화 성공 시)
+    # 후속 런치들 (HW 초기화 성공 시)
     rsp_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(config_pkg, "launch", "rsp.launch.py")
@@ -51,7 +51,7 @@ def generate_launch_description():
         )
     )
 
-    # 3️⃣ 전체 LaunchDescription
+    # 전체 LaunchDescription
     # Note: HW 런치 실패 시 IncludeLaunchDescription 자체가 실패하면 Launch 종료
     return LaunchDescription([
         LogInfo(msg="[INFO] Launching HW interface..."),
