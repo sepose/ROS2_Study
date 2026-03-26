@@ -18,6 +18,13 @@ find_package(realtime_tools REQUIRED)
 
 add_library(snt_hw SHARED src/snt_robot_driver.cpp)
 
+# --------- C 연결 Test용 -------------
+
+add_library(test_c src/test.c)
+target_link_libraries(snt_hw test_c)
+
+# ------------------------------------
+
 ament_target_dependencies(snt_hw
   rclcpp
   rclcpp_lifecycle
